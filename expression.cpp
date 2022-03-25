@@ -153,5 +153,14 @@ Node::Ptr build_expression_tree(const vector<Token>& expr) {
     if (stack.size() != 1) {
         throw invalid_argument("Invalid expression");
     }
-    return move(stack.back());
+    return stack.back()->make_simplified();
+}
+
+Node::Ptr derivative(const Node::Base* expr) {
+    return expr->derivative();
+}
+
+std::ostream& operator<<(std::ostream& out, const Node::Base* expr) {
+    expr->print(out);
+    return out;
 }

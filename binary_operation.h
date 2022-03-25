@@ -14,7 +14,7 @@ namespace BinaryOp {
         virtual Type get_type() const = 0;
         virtual char repr() const = 0;
 //        virtual constructor idiom
-        virtual std::unique_ptr<Base> clone_ptr() const = 0;
+        virtual std::unique_ptr<Base> deep_copy() const = 0;
         
         virtual ~Base() = default;
     };
@@ -33,38 +33,38 @@ namespace BinaryOp {
     };
     
     template<typename T>
-    struct CloneableBase_ : public Base {
+    struct CopyableBase_ : public Base {
     public:
-        BasePtr_ clone_ptr() const final {
+        BasePtr_ deep_copy() const final {
             return std::make_unique<T>();
         }
     };
 
-    struct Sum : public CloneableBase_<Sum> {
+    struct Sum : public CopyableBase_<Sum> {
         int get_priority() const final;
         Type get_type() const final;
         char repr() const final;
     };
 
-    struct Diff : public CloneableBase_<Diff> {
+    struct Diff : public CopyableBase_<Diff> {
         int get_priority() const final;
         Type get_type() const final;
         char repr() const final;
     };
 
-    struct Mult : public CloneableBase_<Mult> {
+    struct Mult : public CopyableBase_<Mult> {
         int get_priority() const final;
         Type get_type() const final;
         char repr() const final;
     };
 
-    struct Div : public CloneableBase_<Div> {
+    struct Div : public CopyableBase_<Div> {
         int get_priority() const final;
         Type get_type() const final;
         char repr() const final;
     };
 
-    struct Pow : public CloneableBase_<Pow> {
+    struct Pow : public CopyableBase_<Pow> {
         int get_priority() const final;
         bool is_left_assoc() const final;
         Type get_type() const final;

@@ -1,4 +1,5 @@
 #include "calculator.h"
+#include "expression.h"
 
 using namespace std;
 
@@ -9,10 +10,10 @@ void Calculator::save(const string& name) {
     vars_[name] = last_;
 }
 shared_ptr<Node::Base> Calculator::derivative() {
-    return last_ = last_->derivative();
+    return last_ = ::derivative(last_.get());
 }
 shared_ptr<Node::Base> Calculator::derivative(const string& name) {
-    return last_ = vars_.at(name)->derivative();
+    return last_ = ::derivative(vars_.at(name).get());
 }
 double Calculator::evaluate(double x) const {
     return last_->evaluate(x);

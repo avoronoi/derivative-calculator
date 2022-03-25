@@ -72,11 +72,9 @@ int main() {
                 }
                 auto name = read_and_validate_existing_var(ss, calc);
                 if (!name.has_value()) {
-                    calc.derivative()->print(cout);
-                    cout << endl;
+                    cout << calc.derivative().get() << endl;
                 } else {
-                    calc.derivative(*name)->print(cout);
-                    cout << endl;
+                    cout << calc.derivative(*name).get() << endl;
                 }
             } else if (command == "EVAL") {
                 if (calc.get() == nullptr) {
@@ -115,11 +113,9 @@ int main() {
                 }
                 auto name = read_and_validate_existing_var(ss, calc);
                 if (!name.has_value()) {
-                    calc.get()->print(cout);
-                    cout << endl;
+                    cout << calc.get().get() << endl;
                 } else {
-                    calc.get(*name)->print(cout);
-                    cout << endl;
+                    cout << calc.get(*name).get() << endl;
                 }
             } else {
                 throw invalid_argument("Invalid command");

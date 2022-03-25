@@ -8,7 +8,7 @@ namespace BinaryOp {
     }
     Ptr& Ptr::operator=(const Ptr& other) {
         return static_cast<Ptr&>(
-            BasePtr_::operator=(other->clone_ptr())
+            BasePtr_::operator=(other->deep_copy())
         );
     }
     Ptr::Ptr(Ptr&& other) {

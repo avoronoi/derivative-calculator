@@ -3,41 +3,58 @@
 #include "binary_operation.h"
 
 #include <memory>
+#include <optional>
 
 namespace Node {
+    class Base;
+    using Ptr = std::unique_ptr<Base>;
+    
     class Base {
     public:
         virtual double evaluate(double x) const = 0;
-        virtual std::unique_ptr<Base> derivative() const = 0;
-        virtual std::unique_ptr<Base> clone_ptr() const = 0;
+        virtual Ptr derivative() const = 0;
+        virtual Ptr shallow_copy() = 0;
+        virtual Ptr deep_copy() const = 0;
         virtual void print(std::ostream& out) const = 0;
         
 //        to put braces only where it is needed
         virtual bool braces_needed_left(const ::BinaryOp::Base& op) const;
         virtual bool braces_needed_right(const ::BinaryOp::Base& op) const;
         
+        virtual std::optional<double> get_const_value() const;
+//        modifies the object, so the result needs to be assigned to this object
+        virtual Ptr make_simplified() = 0;
+        virtual bool is_simplified() const;
+        
         virtual ~Base() = default;
+    protected:
+        bool is_simplified_ = false;
+        static constexpr double EPS = 1e-10;
     };
-    
-    using Ptr = std::unique_ptr<Base>;
     
     class Constant : public Base {
     public:
         Constant(double val);
         double evaluate(double x) const final;
         Ptr derivative() const final;
-        Ptr clone_ptr() const final;
+        Ptr shallow_copy() final;
+        Ptr deep_copy() const final;
         void print(std::ostream& out) const final;
+        std::optional<double> get_const_value() const final;
+        Ptr make_simplified() final;
     private:
         const double val_;
     };
     
     class Variable : public Base {
     public:
+        Variable();
         double evaluate(double x) const final;
         Ptr derivative() const final;
-        Ptr clone_ptr() const final;
+        Ptr shallow_copy() final;
+        Ptr deep_copy() const final;
         void print(std::ostream& out) const final;
+        Ptr make_simplified() final;
     };
     
     namespace BinaryOp {
@@ -48,53 +65,69 @@ namespace Node {
             bool braces_needed_left(const ::BinaryOp::Base& op) const final;
             bool braces_needed_right(const ::BinaryOp::Base& op) const final;
         protected:
-            const Ptr left_, right_;
+            Ptr left_, right_;
+            void simplify_children();
+            std::unique_ptr<Constant> try_make_constant();
         private:
             std::unique_ptr<::BinaryOp::Base> op_;
         };
         
         template<typename T>
-        class CloneableBase_ : public Base {
+        class CopyableBase_ : public Base {
         public:
             using Base::Base;
-            Ptr clone_ptr() const final {
-                return std::make_unique<T>(left_->clone_ptr(), right_->clone_ptr());
+            Ptr shallow_copy() final {
+                auto ret = std::make_unique<T>(std::move(left_),
+                                               std::move(right_));
+                ret->is_simplified_ = is_simplified_;
+                return ret;
+            }
+            Ptr deep_copy() const final {
+                auto ret = std::make_unique<T>(left_->deep_copy(),
+                                               right_->deep_copy());
+                ret->is_simplified_ = is_simplified_;
+                return ret;
             }
         };
         
-        class Sum : public CloneableBase_<Sum> {
+        class Sum : public CopyableBase_<Sum> {
         public:
             Sum(Ptr left, Ptr right);
             double evaluate(double x) const final;
             Ptr derivative() const final;
+            Ptr make_simplified() final;
         };
         
-        class Diff : public CloneableBase_<Diff> {
+        class Diff : public CopyableBase_<Diff> {
         public:
             Diff(Ptr left, Ptr right);
             double evaluate(double x) const final;
             Ptr derivative() const final;
+            Ptr make_simplified() final;
         };
         
-        class Mult : public CloneableBase_<Mult> {
+        class Mult : public CopyableBase_<Mult> {
         public:
             Mult(Ptr left, Ptr right);
             double evaluate(double x) const final;
             Ptr derivative() const final;
+            Ptr make_simplified() final;
         };
         
-        class Div : public CloneableBase_<Div> {
+        class Div : public CopyableBase_<Div> {
         public:
             Div(Ptr left, Ptr right);
             double evaluate(double x) const final;
             Ptr derivative() const final;
+            Ptr make_simplified() final;
         };
         
-        class Pow : public CloneableBase_<Pow> {
+        class Pow : public CopyableBase_<Pow> {
         public:
             Pow(Ptr left, Ptr right);
             double evaluate(double x) const final;
             Ptr derivative() const final;
+            Ptr make_simplified() final;
         };
     }
     
@@ -102,54 +135,62 @@ namespace Node {
         class Base : public Node::Base {
         public:
             Base(Ptr child);
+            Ptr make_simplified() final;
         protected:
-            const Ptr child_;
+            Ptr child_;
         };
         
         template<typename T>
-        class CloneableBase_ : public Base {
+        class CopyableBase_ : public Base {
         public:
             using Base::Base;
-            Ptr clone_ptr() const final {
-                return std::make_unique<T>(child_->clone_ptr());
+            Ptr shallow_copy() final {
+                auto ret = std::make_unique<T>(std::move(child_));
+                ret->is_simplified_ = is_simplified_;
+                return ret;
+            }
+            Ptr deep_copy() const final {
+                auto ret = std::make_unique<T>(child_->deep_copy());
+                ret->is_simplified_ = is_simplified_;
+                return ret;
             }
         };
         
-        class Sin : public CloneableBase_<Sin> {
+        class Sin : public CopyableBase_<Sin> {
         public:
-            using CloneableBase_::CloneableBase_;
+            using CopyableBase_::CopyableBase_;
             double evaluate(double x) const final;
             Ptr derivative() const final;
             void print(std::ostream& out) const final;
         };
         
-        class Cos : public CloneableBase_<Cos> {
+        class Cos : public CopyableBase_<Cos> {
         public:
-            using CloneableBase_::CloneableBase_;
+            using CopyableBase_::CopyableBase_;
             double evaluate(double x) const final;
             Ptr derivative() const final;
             void print(std::ostream& out) const final;
         };
         
-        class Tan : public CloneableBase_<Tan> {
+        class Tan : public CopyableBase_<Tan> {
         public:
-            using CloneableBase_::CloneableBase_;
+            using CopyableBase_::CopyableBase_;
             double evaluate(double x) const final;
             Ptr derivative() const final;
             void print(std::ostream& out) const final;
         };
         
-        class Cot : public CloneableBase_<Cot> {
+        class Cot : public CopyableBase_<Cot> {
         public:
-            using CloneableBase_::CloneableBase_;
+            using CopyableBase_::CopyableBase_;
             double evaluate(double x) const final;
             Ptr derivative() const final;
             void print(std::ostream& out) const final;
         };
         
-        class Neg : public CloneableBase_<Neg> {
+        class Neg : public CopyableBase_<Neg> {
         public:
-            using CloneableBase_::CloneableBase_;
+            using CopyableBase_::CopyableBase_;
             double evaluate(double x) const final;
             Ptr derivative() const final;
             void print(std::ostream& out) const final;
@@ -157,12 +198,18 @@ namespace Node {
             bool braces_needed_right(const ::BinaryOp::Base& op) const final;
         };
         
-        class Ln : public CloneableBase_<Ln> {
+        class Ln : public CopyableBase_<Ln> {
         public:
-            using CloneableBase_::CloneableBase_;
+            using CopyableBase_::CopyableBase_;
             double evaluate(double x) const final;
             Ptr derivative() const final;
             void print(std::ostream& out) const final;
         };
     }
+}
+
+template<typename T, typename... Args>
+Node::Ptr make_simplified(Args&&... args) {
+    return std::make_unique<T>(std::forward<Args>(args)...)
+        ->make_simplified();
 }
